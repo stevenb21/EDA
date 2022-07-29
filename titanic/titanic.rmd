@@ -1,0 +1,19 @@
+---
+title: "titanic"
+output: html_document
+date: "2022-07-29"
+---
+Let's explore the titanic dataset from kaggle and import tidyverse.
+
+```{r setup}
+library(tidyverse)
+BASEPATH = "~/kaggle/EDA/titanic"
+setwd(BASEPATH)
+
+data <- read_csv('data/train.csv')
+cat(str(data))
+```
+We have 891 unique passengers, and the response that we are looking to predict with the features is 'Survived'. While a little morbid, let's look at a pie chart of who survived.
+```{r pie}
+title: survived | (light blue w/ count), not survied(dark blue)
+```
