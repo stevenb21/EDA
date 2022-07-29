@@ -1,0 +1,1 @@
+# This is my repo for all things EDA. I will be using R to make EDA notebooks for kaggle competitions. I am going to use the starter datasets from kaggle and slowly work my way up to the real competitions (ongoing and historic). I'm shooting for 1 EDA notebook a day.
