@@ -3,17 +3,46 @@ title: "titanic"
 output: html_document
 date: "2022-07-29"
 ---
-Let's explore the titanic dataset from kaggle and import tidyverse.
+Let's explore the titanic dataset from kaggle.com!
 
-```{r setup}
+```{r include = FALSE}
+include = FALSE
 library(tidyverse)
+library(ggpmisc)
 BASEPATH = "~/kaggle/EDA/titanic"
 setwd(BASEPATH)
+```
 
-data <- read_csv('data/train.csv')
-cat(str(data))
+```{r }
+titanic <- read.csv('data/train.csv')
 ```
-We have 891 unique passengers, and the response that we are looking to predict with the features is 'Survived'. While a little morbid, let's look at a pie chart of who survived.
-```{r pie}
-title: survived | (light blue w/ count), not survied(dark blue)
+
+We have `r nrow(titanic)` unique passengers, with `r ncol(titanic) -1 ` features describing them. We are most interested in their survival status, as reflected in the 'Survived' feature. While a little morbid, let's look at some graphs of who survived.
+<br />
+
+```{r echo=FALSE}
+bounty <- function(lofb){
+  #input: list of booleans
+  #changes 1 to "Alive"
+  #changes 0 to "Dead"
+  lofb[lofb==1] = "Alive"
+  lofb[lofb==0] = "Dead"
+  return(lofb)
+}
+t <- as.data.frame(table(bounty(titanic$Survived)))
+colnames(t) <- c("Status","Freq")
+
+ggplot(titanic, aes(x=bounty(Survived),)) +
+  geom_bar(fill=c("grey","lightblue"),colour="black")+
+  xlab("Survival Status")+
+  ylab("")+
+  annotate(geom="table",
+               x=.5,
+               y=500,
+               label=list(t))
 ```
+```{r echo = False}
+# Survival based on social class (colored histograms w/ the trend lines?)
+# ditto 
+```
+
