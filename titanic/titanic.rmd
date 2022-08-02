@@ -8,9 +8,8 @@ Let's explore the titanic dataset from kaggle.com!
 ```{r include = FALSE}
 include = FALSE
 library(tidyverse)
-library(ggpmisc)
-BASEPATH = "~/kaggle/EDA/titanic"
-setwd(BASEPATH)
+library(caret)
+setwd("~/kaggle/EDA/titanic")
 ```
 
 ```{r }
@@ -21,28 +20,32 @@ We have `r nrow(titanic)` unique passengers, with `r ncol(titanic) -1 ` features
 <br />
 
 ```{r echo=FALSE}
-bounty <- function(lofb){
+wanted <- function(lofb){
   #input: list of booleans
   #changes 1 to "Alive"
   #changes 0 to "Dead"
-  lofb[lofb==1] = "Alive"
   lofb[lofb==0] = "Dead"
+  lofb[lofb==1] = "Alive"
   return(lofb)
 }
-t <- as.data.frame(table(bounty(titanic$Survived)))
-colnames(t) <- c("Status","Freq")
 
-ggplot(titanic, aes(x=bounty(Survived),)) +
+t <- as.data.frame(table(wanted(titanic$Survived)))
+colnames(t) <- c("Status","Freq")
+print(t)
+
+ggplot(titanic, aes(x=wanted(Survived),)) +
   geom_bar(fill=c("grey","lightblue"),colour="black")+
   xlab("Survival Status")+
-  ylab("")+
-  annotate(geom="table",
-               x=.5,
-               y=500,
-               label=list(t))
+  ylab("")
+
 ```
-```{r echo = False}
+Here are the features we are working with:
+
+```{r echo=False}
+# dmy vars Sex
+# numbers <- sapply(titanic,class) %in% c("integer","numeric")
 # Survival based on social class (colored histograms w/ the trend lines?)
 # ditto 
+str(titanic)
 ```
 
