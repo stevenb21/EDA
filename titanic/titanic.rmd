@@ -8,8 +8,9 @@ Let's explore the titanic dataset from kaggle.com!
 ```{r include = FALSE}
 include = FALSE
 library(tidyverse)
-library(caret)
 setwd("~/kaggle/EDA/titanic")
+
+theme_set(theme_minimal())
 ```
 
 ```{r }
@@ -20,32 +21,152 @@ We have `r nrow(titanic)` unique passengers, with `r ncol(titanic) -1 ` features
 <br />
 
 ```{r echo=FALSE}
-wanted <- function(lofb){
-  #input: list of booleans
-  #changes 1 to "Alive"
-  #changes 0 to "Dead"
-  lofb[lofb==0] = "Dead"
-  lofb[lofb==1] = "Alive"
-  return(lofb)
-}
 
-t <- as.data.frame(table(wanted(titanic$Survived)))
-colnames(t) <- c("Status","Freq")
-print(t)
+titanic_mod <- titanic
 
-ggplot(titanic, aes(x=wanted(Survived),)) +
+titanic_mod$Survived <- recode_factor(titanic$Survived, '0' = 'Dead', '1' = 'Alive')
+
+ggplot(titanic_mod, aes(x=Survived)) +
   geom_bar(fill=c("grey","lightblue"),colour="black")+
   xlab("Survival Status")+
   ylab("")
 
 ```
+```{r echo=FALSE}
+t <- as.data.frame(table(titanic_mod$Survived))
+colnames(t) <- c("Status","Freq")
+print(t)
+```
 Here are the features we are working with:
 
-```{r echo=False}
-# dmy vars Sex
-# numbers <- sapply(titanic,class) %in% c("integer","numeric")
+```{r}
+str(titanic)
+```
+```{r echo=FALSE}
+# empty string on embarked -> NA
+titanic <- titanic %>%
+  mutate(across(where(is.factor), ~ na_if(.,"")))
+```
+
+We have `r sum(is.na(titanic))` total missing values, which will be dealt with later:
+```{r echo=FALSE}
+# empty string on embarked -> NA
+titanic <- titanic %>%
+  mutate(across(where(is.factor), ~ na_if(.,"")))
+
+colSums(is.na(titanic))
+```
+
+```{r echo=FALSE}
+ggplot(titanic_mod,aes(x=Sex, fill=Survived))+
+  geom_bar(position="dodge",colour="black") +
+  theme(legend.title = element_blank())
+
+r <- titanic %>% group_by(Sex) %>% summarise(Count = n(), Alive = sum(Survived),Dead = n() - sum(Survived),Survivalrate = sum(Survived)/n())
+print(as.data.frame(r))
+```
+Women are `r round((.74 / .18),digits=1) ` times more likely to survive than men.
+
+Let's look at the 'Pclass' feature. A value of '1' means 1st class, or a passenger who is well-to-do.
+
+```{r echo=FALSE}
+ggplot(titanic_mod,aes(x=Pclass, fill=Survived))+
+  geom_bar(position="dodge",colour="black") +
+  theme(legend.title = element_blank())
+
+
+r <- titanic %>% group_by(Pclass) %>% summarise(Count = n(), Alive = sum(Survived),Dead = n() - sum(Survived),Survivalrate = sum(Survived)/n())
+print(as.data.frame(r))
+```
+You are `r round((.63 / .242),digits=2) ` times more likely to survive in first class than in coach.
+
+Combining both features from above:
+
+```{r echo=FALSE}
+ggplot(titanic_mod,aes(x=factor(Pclass),y=Sex,fill=Survived))+
+  geom_violin(trim=FALSE)+
+  xlab("Passenger Class")
+```
+
+
+Given that a passenger is female, the survival rate for each passenger class is:
+```{r echo=FALSE}
+poorgirl <- titanic %>% group_by(Pclass) %>% filter(Sex == 'female') %>% summarise(Survivalrate = sum(Survived)/n())
+
+print(as.data.frame(poorgirl))
+
+```
+
+
+Let's look at the age feature. We have 177 missing values. We could mean impute here and end up with 177 values of `r mean(titanic$Age,na.rm=TRUE)`, which is not too informative. Taking a cue from a kaggle notebook, we can bin each passenger by the title in their name, and mean impute by group. 
+
+
+
+```{r echo=FALSE}
+
+titanic_age <- titanic_mod %>% drop_na()
+ggplot(titanic_age, aes(x = Age,y=..density..)) +
+  geom_histogram(binwidth=2,fill = "cornsilk", colour = "grey60", size = .2) +
+  geom_density() +
+  facet_grid(Survived ~ .)
+
+```
+
+```{r echo=FALSE}
+
+titler <-function(name){
+  full_name <- str_split(as.character(name),",",simplify=TRUE)
+  title <- str_split(full_name[,2],"\\.",simplify=TRUE)
+  return(str_replace_all(title[,1]," ",""))
+}
+
+
+surname <- function(name){
+  full_name <- str_split(as.character(name),",",simplify=TRUE)
+  return(full_name[,1])
+}
+
+titles <- titanic %>% select(Age,Name) %>% transmute(Age,Title = titler(Name)) %>% group_by(Title) %>% 
+  mutate(n = count(Title)) #%>% filter(n>10) # %>% count(Title) %>% filter(n>10)
+titles
+                      
+# title: strsplit(x, " ")
+#TODO group by title
+#TODO impute by mean age of each group
+```
+
+```{r echo=FALSE}
+ggplot(titanic_age,aes(x=factor(Pclass),y=Age,fill=Survived))+
+  geom_violin(trim=FALSE)+
+  geom_boxplot(width=.2) +
+  xlab("Passenger Class")
+```
+
+
+```{r echo=FALSE}
+
+# length(unique(titanic$Ticket)) = 681 | survival status of those with the same ticket?
+# scatterplots of fare. one for living, one for dead
+# group by cabin and survival status? cabin starting letter?
+# dmyvar embarked. survival bargraph
+
+#SibSp histogram bins and survival fill | groupby?
+#Parch histogram bins and survival fill | groupby?
+# group together last names - did families live and die together? How to plot?
+
+# 
+# correlation matrix numbers
+# cor(titanic[numbers])
+
+titanic_num <- titanic
+titanic_num$Sex <- as.numeric(recode_factor(titanic$Sex, 'female' = 0, 'male' = 1))
+titanic_num$Embarked <- as.numeric(recode_factor(titanic$Embarked, 'C' = 0, 'S' = 1, 'Q' =2))
+numbers <- sapply(titanic_num,class) %in% c("integer","numeric")
+stat <- titanic_num[numbers] %>% select(-PassengerId) %>% drop_na
+cor(stat)
+#For right now we will drop the observations with missing ages - we'll come back later and mean impute them.
+
 # Survival based on social class (colored histograms w/ the trend lines?)
 # ditto 
-str(titanic)
 ```
 
