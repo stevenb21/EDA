@@ -8,6 +8,8 @@ Let's explore the titanic dataset from kaggle.com!
 ```{r include = FALSE}
 include = FALSE
 library(tidyverse)
+library(reshape2) # for heatmap correlation matrix
+
 setwd("~/kaggle/EDA/titanic")
 
 theme_set(theme_minimal())
@@ -45,17 +47,80 @@ str(titanic)
 ```{r echo=FALSE}
 # empty string on embarked -> NA
 titanic <- titanic %>%
-  mutate(across(where(is.factor), ~ na_if(.,"")))
-```
-
-We have `r sum(is.na(titanic))` total missing values, which will be dealt with later:
-```{r echo=FALSE}
-# empty string on embarked -> NA
-titanic <- titanic %>%
-  mutate(across(where(is.factor), ~ na_if(.,"")))
-
+  mutate(across(where(is.character), ~ na_if(.,"")))
 colSums(is.na(titanic))
 ```
+
+We have `r sum(is.na(titanic))` total missing values.
+
+Let's look at the correlation matrix to figure out which features stick out.
+
+```{r echo=FALSE}
+# Correlation matrix heatmap. 
+#steps: Reorder by coef, remove a redundant triangle (from the symmetric matrix)
+#       melt, add colors, and label w/ coef
+
+# ensure all variables are numeric, encode categoricals, and remove ID feature.
+titanic_num <- titanic
+titanic_num$Sex <- as.numeric(recode_factor(titanic$Sex, 'female' = 0, 'male' = 1))
+titanic_num$Embarked <- as.numeric(recode_factor(titanic$Embarked, 'C' = 0, 'S' = 1, 'Q' =2))
+numbers <- sapply(titanic_num,class) %in% c("integer","numeric")
+titanic_num <- titanic_num[numbers] %>% select(-PassengerId) %>% drop_na
+
+cormat <- round(cor(titanic_num),2)
+
+reorder_cormat <- function(cormat){
+# Use correlation between variables as distance
+dd <- as.dist((1-cormat)/2)
+hc <- hclust(dd)
+cormat <-cormat[hc$order, hc$order]
+}
+
+# Get upper triangle of the correlation matrix
+get_upper_tri <- function(cormat){
+  cormat[lower.tri(cormat)]<- NA
+  return(cormat)
+}
+
+
+# Reorder the correlation matrix
+cormat <- reorder_cormat(cormat)
+upper_tri <- get_upper_tri(cormat)
+# Melt the correlation matrix
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme_minimal()+ # minimal theme
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed()
+  
+# label w/ coef
+
+ggheatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = c(0.6, 0.7),
+  legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                title.position = "top", title.hjust = 0.5))
+
+
+```
+
+It appears Sex and PClass are the best features to use to explain who survived. Let's look at those first.
+
 
 ```{r echo=FALSE}
 ggplot(titanic_mod,aes(x=Sex, fill=Survived))+
@@ -98,21 +163,42 @@ print(as.data.frame(poorgirl))
 ```
 
 
-Let's look at the age feature. We have 177 missing values. We could mean impute here and end up with 177 values of `r mean(titanic$Age,na.rm=TRUE)`, which is not too informative. Taking a cue from a kaggle notebook, we can bin each passenger by the title in their name, and mean impute by group. 
+It appears the people riding coach are not gender-biased. It's good to see solidarity among the working class.
 
+
+Keeping with our order down the Survived correlation matrix, let's analyze Fare and try to see if it's redundant with Pclass.
+
+```{r echo=FALSE}
+#Scatterplot of fare/histogram with bins
+# correlation/dependance on fare. is fare redundant with Pclass?
+
+```
 
 
 ```{r echo=FALSE}
+# Embarked count w/ survival fill | sex fill | Pclass fill
+```
 
-titanic_age <- titanic_mod %>% drop_na()
-ggplot(titanic_age, aes(x = Age,y=..density..)) +
+
+Let's look at the age feature:
+
+```{r echo=FALSE}
+
+
+ggplot(titanic_mod %>% drop_na(), aes(x = Age,y=..density..)) +
   geom_histogram(binwidth=2,fill = "cornsilk", colour = "grey60", size = .2) +
   geom_density() +
   facet_grid(Survived ~ .)
 
 ```
-
+ <br /c>
+ 
+ We have 177 missing values from the Age feature.
+ 
 ```{r echo=FALSE}
+# fill NA ages by title avg 
+
+ # We could mean impute here and end up with 177 values of `r round(mean(titanic$Age,na.rm=TRUE),1)`, which is not too informative. Taking a cue from a kaggle notebook, we can bin each passenger by the title in their name, and mean impute by group. 
 
 titler <-function(name){
   full_name <- str_split(as.character(name),",",simplify=TRUE)
@@ -120,20 +206,29 @@ titler <-function(name){
   return(str_replace_all(title[,1]," ",""))
 }
 
+titanic_age <- titanic_mod %>% mutate(Title=titler(Name)) %>% group_by(Title) %>% mutate(Age=replace_na(Age,mean(Age,na.rm=TRUE)))
 
+ggplot(titanic_age %>% drop_na(), aes(x = Age,y=..density..)) +
+  geom_histogram(binwidth=2,fill = "cornsilk", colour = "grey60", size = .2) +
+  geom_density() +
+  facet_grid(Survived ~ .)
+
+```
+
+```{r echo=FALSE}
+#TODO see if families survivied/died together
+#tie in SibSp/ParCh
 surname <- function(name){
   full_name <- str_split(as.character(name),",",simplify=TRUE)
   return(full_name[,1])
 }
 
-titles <- titanic %>% select(Age,Name) %>% transmute(Age,Title = titler(Name)) %>% group_by(Title) %>% 
-  mutate(n = count(Title)) #%>% filter(n>10) # %>% count(Title) %>% filter(n>10)
-titles
-                      
-# title: strsplit(x, " ")
-#TODO group by title
-#TODO impute by mean age of each group
+#
+family <- titanic%>% transmute(Survived,Family=surname(Name)) %>% group_by(Family) %>% summarize(sum(Survived))
+
+
 ```
+
 
 ```{r echo=FALSE}
 ggplot(titanic_age,aes(x=factor(Pclass),y=Age,fill=Survived))+
@@ -143,7 +238,7 @@ ggplot(titanic_age,aes(x=factor(Pclass),y=Age,fill=Survived))+
 ```
 
 
-```{r echo=FALSE}
+```{r include=FALSE}
 
 # length(unique(titanic$Ticket)) = 681 | survival status of those with the same ticket?
 # scatterplots of fare. one for living, one for dead
@@ -158,12 +253,7 @@ ggplot(titanic_age,aes(x=factor(Pclass),y=Age,fill=Survived))+
 # correlation matrix numbers
 # cor(titanic[numbers])
 
-titanic_num <- titanic
-titanic_num$Sex <- as.numeric(recode_factor(titanic$Sex, 'female' = 0, 'male' = 1))
-titanic_num$Embarked <- as.numeric(recode_factor(titanic$Embarked, 'C' = 0, 'S' = 1, 'Q' =2))
-numbers <- sapply(titanic_num,class) %in% c("integer","numeric")
-stat <- titanic_num[numbers] %>% select(-PassengerId) %>% drop_na
-cor(stat)
+
 #For right now we will drop the observations with missing ages - we'll come back later and mean impute them.
 
 # Survival based on social class (colored histograms w/ the trend lines?)
