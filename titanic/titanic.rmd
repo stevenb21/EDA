@@ -9,10 +9,11 @@ Let's explore the titanic dataset from kaggle.com!
 include = FALSE
 library(tidyverse)
 library(reshape2) # for heatmap correlation matrix
+library(patchwork)
 
 setwd("~/kaggle/EDA/titanic")
 
-theme_set(theme_minimal())
+#theme_set(theme_minimal())
 ```
 
 ```{r }
@@ -23,7 +24,6 @@ We have `r nrow(titanic)` unique passengers, with `r ncol(titanic) -1 ` features
 <br />
 
 ```{r echo=FALSE}
-
 titanic_mod <- titanic
 
 titanic_mod$Survived <- recode_factor(titanic$Survived, '0' = 'Dead', '1' = 'Alive')
@@ -51,9 +51,16 @@ titanic <- titanic %>%
 colSums(is.na(titanic))
 ```
 
-We have `r sum(is.na(titanic))` total missing values.
+We have `r sum(is.na(titanic))` total missing values. Age will be dealt with below.
 
-Let's look at the correlation matrix to figure out which features stick out.
+Let's plot the features one by one:
+
+```{r echo=FALSE}
+#TODO: univariate plots for each feature (count). side by side filled with 'survival'
+```
+
+
+Let's look at the correlation matrix to examine any linear relationships.
 
 ```{r echo=FALSE}
 # Correlation matrix heatmap. 
@@ -119,28 +126,48 @@ theme(
 
 ```
 
-It appears Sex and PClass are the best features to use to explain who survived. Let's look at those first.
+Sex and Pclass appear to be the best features for predicting survival with a linear relationship. 
 
 
 ```{r echo=FALSE}
-ggplot(titanic_mod,aes(x=Sex, fill=Survived))+
+sexcount <-ggplot(titanic_mod,aes(x=Sex))+
+  geom_bar(position="dodge",colour="black") +
+  scale_fill_manual(values = c("pink","blue"))+
+    geom_text(stat='count',aes(label=..count..),vjust=5,color="white")+
+  theme(legend.title = element_blank())
+
+sexfill <- ggplot(titanic_mod,aes(x=Sex, fill=Survived))+
   geom_bar(position="dodge",colour="black") +
   theme(legend.title = element_blank())
 
 r <- titanic %>% group_by(Sex) %>% summarise(Count = n(), Alive = sum(Survived),Dead = n() - sum(Survived),Survivalrate = sum(Survived)/n())
 print(as.data.frame(r))
+
+splot <- (sexcount + sexfill)
+splot
 ```
 Women are `r round((.74 / .18),digits=1) ` times more likely to survive than men.
 
 Let's look at the 'Pclass' feature. A value of '1' means 1st class, or a passenger who is well-to-do.
 
 ```{r echo=FALSE}
-ggplot(titanic_mod,aes(x=Pclass, fill=Survived))+
+classcount <- ggplot(titanic_mod,aes(x=Pclass))+
+  geom_bar() +
+  scale_fill_manual(values = c("gold","grey","brown"))+
+  geom_text(stat='count',aes(label=..count..),vjust=5,color="white")+
+  theme(legend.title = element_blank())
+  
+
+
+classfill <- ggplot(titanic_mod,aes(x=Pclass, fill=Survived))+
   geom_bar(position="dodge",colour="black") +
   theme(legend.title = element_blank())
 
 
 r <- titanic %>% group_by(Pclass) %>% summarise(Count = n(), Alive = sum(Survived),Dead = n() - sum(Survived),Survivalrate = sum(Survived)/n())
+
+Pc_plot <- classcount + classfill
+Pc_plot
 print(as.data.frame(r))
 ```
 You are `r round((.63 / .242),digits=2) ` times more likely to survive in first class than in coach.
