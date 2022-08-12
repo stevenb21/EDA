@@ -130,6 +130,8 @@ Sex and Pclass appear to be the best features for predicting survival with a lin
 
 
 ```{r echo=FALSE}
+### UNIVARIATE ###
+
 sexcount <-ggplot(titanic_mod,aes(x=Sex))+
   geom_bar(position="dodge",colour="black") +
   scale_fill_manual(values = c("pink","blue"))+
@@ -146,6 +148,8 @@ print(as.data.frame(r))
 splot <- (sexcount + sexfill)
 splot
 ```
+
+
 Women are `r round((.74 / .18),digits=1) ` times more likely to survive than men.
 
 Let's look at the 'Pclass' feature. A value of '1' means 1st class, or a passenger who is well-to-do.
@@ -172,9 +176,34 @@ print(as.data.frame(r))
 ```
 You are `r round((.63 / .242),digits=2) ` times more likely to survive in first class than in coach.
 
-Combining both features from above:
+Let's take a look at Fare. I took the liberty of removing outliers (Fare > 100) from the histograms.
+
+```{r echo=FALSE, message=FALSE, results='hide',fig.keep='all'}
+
+ggplot(titanic_mod, aes(y = Fare,x=Survived))+
+  geom_boxplot()
+  
+ggplot(titanic_mod %>% filter(Fare < 100), aes(x = Fare,y=..density..)) +
+  geom_density() +
+  facet_grid(Survived ~ .)
+
+
+r <- titanic_mod %>% group_by(Survived) %>% summarize(median(Fare))
+print(as.data.frame(r))
+```
+
+There's defintely going to be some redundancy in the Fare feature with respect to Pclass, but it is illustrative nonetheless.
+
+Onto embarked:
 
 ```{r echo=FALSE}
+
+```
+
+Combining both Sex and Pclass features from above:
+
+```{r echo=FALSE}
+### BIVARIATE ###
 ggplot(titanic_mod,aes(x=factor(Pclass),y=Sex,fill=Survived))+
   geom_violin(trim=FALSE)+
   xlab("Passenger Class")
@@ -195,17 +224,6 @@ It appears the people riding coach are not gender-biased. It's good to see solid
 
 Keeping with our order down the Survived correlation matrix, let's analyze Fare and try to see if it's redundant with Pclass.
 
-```{r echo=FALSE}
-#Scatterplot of fare/histogram with bins
-# correlation/dependance on fare. is fare redundant with Pclass?
-
-```
-
-
-```{r echo=FALSE}
-# Embarked count w/ survival fill | sex fill | Pclass fill
-```
-
 
 Let's look at the age feature:
 
@@ -222,7 +240,7 @@ ggplot(titanic_mod %>% drop_na(), aes(x = Age,y=..density..)) +
  
  We have 177 missing values from the Age feature.
  
-```{r echo=FALSE}
+```{r include=FALSE}
 # fill NA ages by title avg 
 
  # We could mean impute here and end up with 177 values of `r round(mean(titanic$Age,na.rm=TRUE),1)`, which is not too informative. Taking a cue from a kaggle notebook, we can bin each passenger by the title in their name, and mean impute by group. 
