@@ -1,0 +1,144 @@
+---
+title: "Alcoholic Liver Disease Tabulation"
+author: "Steven Brooks"
+date: "9/16/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+ALD <- read.csv("ALD.csv")
+
+
+```
+
+## Tabular Reporting of Statistical Reports
+
+Your first task in Intro to Biostatistical Computing is to utilize statistical procedures (learned in PBHL-B 275 and PBHL-B 280 for BS HDS students, and summarized in Tests.docx for MS Biostat students/BS HDS students) to test for differences between cases and controls in a relatively large number of lab values and characteristics in dataset ALD.csv. Please use an appropriate statistical test to test for a difference, and report relevant descriptives (mean, SD, percent, n) based on the nature of the variable (continuous, discrete, etc.). Also, provide a p-value for the relevant test and flag associations which are significant at the 0.05 level of significance.
+
+
+You may work on this exercise in class today. Please modify this document by including your tabular results in a table at the bottom of this page.
+
+
+The variables to analyze are: `r names(ALD)[-1]`.
+
+
+Once completed, you can submit on Canvas to the exercise named **Tabulating Results For Multiple Markers**.
+
+```{r head}
+head(ALD)
+```
+
+Our mission is to identify any differences between the control group and the cases group.
+
+
+The dimensions of this data set are: `r dim(ALD)`
+
+
+
+```{r cats and conts}
+cats <- c()
+conts <- c()
+
+for (fname in names(ALD)){
+  threshold = .05
+  f = ALD[fname][,1]
+  if (length(unique(f))/length(f) < threshold){
+    cats <- append(cats,fname)
+  }
+  else{
+    conts <- append(conts,fname)
+  }
+}
+
+```
+
+
+We have `r length(cats) - 1` categorical features and `r length(conts)` continuous features, with one binary dependent variable, 'ARMS'. Any observations with NA and "" values in the 'ARMS' variable will be omitted.
+
+```{r rm na}
+ALD <- ALD %>% filter(!is.na(ARMS)) %>% filter("" != ARMS)
+```
+
+Let's lay out some descriptive statistics for each feature.
+
+```{r descriptive stats}
+#TODO chi sq and ttest
+#TODO make it a neat little table
+
+dep_var <- ALD$ARMS
+x_cont <- ALD$GLUCOSE_RAND
+x_cat <- ALD$COFFEE_5YR
+
+dsc_cont <- function(data,feat,dep_var) {
+  f <- data %>%  transmute(feat,dep_var)
+  
+  m <- mean(f)
+  std <- sd(f)
+  n <- length(f)
+   
+}
+
+
+dsc_cat <- function(data,feat,dep_var) {
+  f <- data %>% transmute(feat,dep_var)
+  
+}
+```
+
+```{r stackoverflow}
+
+library(data.table)
+
+### https://stackoverflow.com/questions/29147630/create-t-test-table-with-dplyr
+
+
+
+ttestbyName <- function(myName) {
+  bt <- filter(ALD, Group=="treatment", Name==myName)
+  bc <- filter(ALD, Group=="control", Name==myName)
+
+  b <- t.test(bt$X, bc$X, conf.level=0.90)
+
+  dataNameX <- data.frame(Name = myName,
+                      treatment = round(b$estimate[[1]], digits = 4),
+                      control = round(b$estimate[[2]], digits = 4),
+                      CI = paste('(',round(b$conf.int[[1]], 
+                                           digits = 4),', ',
+                                 round(b$conf.int[[2]], 
+                                       digits = 4), ')',
+                                 sep=""),
+                      pvalue = round(b$p.value, digits = 4),
+                      ntreatment = nrow(bt),  # changes only in
+                      ncontrol = nrow(bc))    # these 2 nrow() args
+}
+
+
+Test_by_Name <- lapply(unique(ALD$ARMS), ttestbyName)
+Test_by_Name <- rbindlist(Test_by_Name)
+
+
+Test_by_Name <- ALD$ARMS %>% 
+                unique %>% 
+                lapply(., ttestbyName) %>% 
+                rbindlist
+```
+
+
+```{r ttesting my patients}
+#NOTE: binary dep_var...
+
+ttesting <- function(data, dep_var,feat){
+  bt <- data}
+
+  
+
+```
+
+
+```{r}
+#TODO: perform ttest/chisq for exactly one feature, then worry about doing the whole thing all at once =)
+
+```
+
