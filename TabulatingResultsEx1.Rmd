@@ -8,6 +8,7 @@ output: word_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(data.table)
 ALD <- read.csv("ALD.csv")
 
 
@@ -61,6 +62,83 @@ We have `r length(cats) - 1` categorical features and `r length(conts)` continuo
 ALD <- ALD %>% filter(!is.na(ARMS)) %>% filter("" != ARMS)
 ```
 
+
+
+```{r ttest func}
+### https://stackoverflow.com/questions/29147630/create-t-test-table-with-dplyr
+
+ttestbyName <- function(featName){
+  #case <- ALD %>% filter(ARMS == "CASES") %>%  transmute({{featName}}) %>% drop_na() %>% filter({{featName}} != '')
+  #control <- ALD %>% filter(ARMS =="CONTROLS") %>%  transmute({{featName}}) %>% drop_na()  %>% filter({{featName}} != '')
+  #b <- t.test(case,control) WRONGGGGGGGGGGGG
+  l = nrow(case) + nrow(control)
+
+  dataNameX <- data.frame(Name = colnames(case),
+                          type = "CONT",
+                      case_mean = round(b$estimate[[1]], digits = 2),
+                      control_mean = round(b$estimate[[2]], digits = 2),
+                      case_sd = round(sd(case[,1]),digits=2),
+                      control_sd =round(sd(control[,1]),digits=2),
+                      ncases = paste0(nrow(case)," (",round(nrow(case)/l,2)*100,"%)"),  # changes only in
+                      ncontrol = paste0(nrow(control)," (",round(nrow(control)/l,2)*100,"%)"),# these 2 nrow() args
+                      pvalue = round(b$p.value, digits = 4),
+                      signifigant =  (b$p.value < .05))
+  return(dataNameX)
+}
+
+ttestbyName(GLUCOSE_RAND)
+```
+
+
+
+```{r scratch}
+x <- (ALD %>%  transmute(COFFEE_5YR)  %>% drop_na() %>% filter(COFFEE_5YR != '' ))[,1]
+
+```
+
+
+```{r chi func}
+
+chibyName <- function(featName){
+  feat <- (ALD %>% transmute({{featName}})  %>% drop_na())[,1]
+  c <-  chisq.test(ALD$ARMS,feat)
+  
+  # dataNameX <- data.frame(Name = colnames(case),
+  #                         type = "CONT",
+  #                     case_mean = round(b$estimate[[1]], digits = 4),
+  #                     control_mean = round(b$estimate[[2]], digits = 4),
+  #                     case_sd = sd(case[,1]),
+  #                     control_sd =sd(control[,1]),
+  #                     percent = NA,
+  #                     ncases = nrow(case),  # changes only in
+  #                     ncontrol = nrow(control),# these 2 nrow() args
+  #                     pvalue = round(b$p.value, digits = 4),
+  #                     signifigant =  (b$p.value < .05))
+  # return(dataNameX)
+}
+
+c <- chibyName(COFFEE_5YR)
+```
+
+
+
+
+```{r sigtest}
+
+sigtest <- function(featName){
+  if (featName %in% conts){
+    return(ttestbyName(featName))
+  }
+  else {
+    return(chibyName(featName))
+  }
+}
+
+
+```
+
+
+
 Let's lay out some descriptive statistics for each feature.
 
 ```{r descriptive stats}
@@ -89,56 +167,42 @@ dsc_cat <- function(data,feat,dep_var) {
 
 ```{r stackoverflow}
 
-library(data.table)
+#library(data.table)
 
 ### https://stackoverflow.com/questions/29147630/create-t-test-table-with-dplyr
 
 
 
-ttestbyName <- function(myName) {
-  bt <- filter(ALD, Group=="treatment", Name==myName)
-  bc <- filter(ALD, Group=="control", Name==myName)
-
-  b <- t.test(bt$X, bc$X, conf.level=0.90)
-
-  dataNameX <- data.frame(Name = myName,
-                      treatment = round(b$estimate[[1]], digits = 4),
-                      control = round(b$estimate[[2]], digits = 4),
-                      CI = paste('(',round(b$conf.int[[1]], 
-                                           digits = 4),', ',
-                                 round(b$conf.int[[2]], 
-                                       digits = 4), ')',
-                                 sep=""),
-                      pvalue = round(b$p.value, digits = 4),
-                      ntreatment = nrow(bt),  # changes only in
-                      ncontrol = nrow(bc))    # these 2 nrow() args
-}
-
-
-Test_by_Name <- lapply(unique(ALD$ARMS), ttestbyName)
-Test_by_Name <- rbindlist(Test_by_Name)
-
-
-Test_by_Name <- ALD$ARMS %>% 
-                unique %>% 
-                lapply(., ttestbyName) %>% 
-                rbindlist
+# ttestbyName <- function(myName) {
+#   bt <- filter(ALD, Group=="treatment", Name==myName)
+#   bc <- filter(ALD, Group=="control", Name==myName)
+# 
+#   b <- t.test(bt$X, bc$X, conf.level=0.90)
+# 
+#   dataNameX <- data.frame(Name = myName,
+#                       treatment = round(b$estimate[[1]], digits = 4),
+#                       control = round(b$estimate[[2]], digits = 4),
+#                       CI = paste('(',round(b$conf.int[[1]], 
+#                                            digits = 4),', ',
+#                                  round(b$conf.int[[2]], 
+#                                        digits = 4), ')',
+#                                  sep=""),
+#                       pvalue = round(b$p.value, digits = 4),
+#                       ntreatment = nrow(bt),  # changes only in
+#                       ncontrol = nrow(bc))    # these 2 nrow() args
+# }
+# 
+# 
+# Test_by_Name <- lapply(unique(ALD$ARMS), ttestbyName)
+# Test_by_Name <- rbindlist(Test_by_Name)
+# 
+# 
+# Test_by_Name <- ALD$ARMS %>% 
+#                 unique %>% 
+#                 lapply(., ttestbyName) %>% 
+#                 rbindlist
 ```
 
 
-```{r ttesting my patients}
-#NOTE: binary dep_var...
 
-ttesting <- function(data, dep_var,feat){
-  bt <- data}
-
-  
-
-```
-
-
-```{r}
-#TODO: perform ttest/chisq for exactly one feature, then worry about doing the whole thing all at once =)
-
-```
 
