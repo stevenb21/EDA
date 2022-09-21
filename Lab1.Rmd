@@ -1,0 +1,105 @@
+---
+title: "Lab 1"
+author: "PBHL-B 481/581"
+date: ""
+output: 
+  pdf_document:
+    includes:
+      in_header: header.tex
+---
+
+```{r setup, include=FALSE}
+library(ISLR)
+library(grid)
+library(MASS)
+library(gridExtra)
+#library(psych)
+library(dplyr)
+```
+
+# 
+
+## Complete the following exercises
+
+1) Create:
+
+a) An atomic vector of your own choice
+```{r atomic}
+abc <- c(123)
+abc
+```
+
+\vspace{50pt}
+
+b) A list of your own choice
+
+```{r lists}
+norhymes <- list("orange","bulb","month")
+```
+
+\vspace{50pt}
+
+c) An augmented vector of your own choice (You'll use the \func{attr()}) function for this, or create an object that has attributes associated with it by default
+```{r tibble}
+
+rhymes <- list("fat","cat","hat")
+
+t <- tibble(rhymes,norhymes)
+attr(t,'names')
+```
+\vspace{50pt}
+
+2) Create a function called \func{summ2()} which can be used with \func{apply()} in order to obtain the minimum, maximum, mean, median, and standard deviation for each of the columns of a matrix. Demonstrate using this function on a matrix 100 by 5 matrix of standard normal variables (you'll need function \func{rnorm()} for this). Your answer should be a 5 by 5 matrix, so you'll need to adapt your \func{summ2()} for this.
+
+\vspace{50pt}
+
+3) Consider the list created below. Write a short script using \func{lapply()} to test which elements in the list are functions. Then return only those list elements which are functions and assign this result to variable \var{listSub}. Make sure that the function you create will work with arbitrary lists. It is not acceptable to just figure out yourself which elements contain functions and subset \var{bigList} below. Make it automated and flexible.
+
+```{r}
+bigList <- list(x = 1:8, y = data.frame(norm = rnorm(5, 0, 1)), z = function(x) {x},
+                t1 = function(x, y) {x + y ^ exp(x)}, char = "This is a character",
+                t2 = function(lambda) {lambda ^ (1 / pi)})
+```
+
+\vspace{50pt}
+
+4) **Modifying function \func{knnPredV()} to take a general dataset with variable names and a formula for the variables to use in clustering:** For this exercise, we will continue to use \func{knnPredV()} defined in the notes and listed below for reference (along with \var{knnMat}) - Please note that there are currently three versions of \func{knnPred()} in the notes, \func{knnPred()}, \func{knnPred2()}, and \func{knnPredV()}:
+
+```{r}
+## knnMat definition
+set.seed(1234)
+trainOutcome <- rbinom(10, 1, 0.5)
+trainInput <- rnorm(10, 1.5 * trainOutcome, 1)
+knnMat <- cbind(trainOutcome, trainInput)
+
+## knn function definition
+knnPredV <- function(x, k = 3)
+{
+  dist <- sapply(x, function(t) {sqrt((t - knnMat[,2])^2)})
+  newMat <- cbind(knnMat, dist)
+  apply(newMat[,3:dim(newMat)[2]], MARGIN = 2, 
+        FUN = function(t) {mat <- cbind(knnMat, t)
+    newMat <- mat[order(t),]
+  subMat <- newMat[1:k,]
+  if (k > 1) {class <- mean(subMat[,1])} else {
+    class <- mean(subMat[1])
+  }
+  return(ifelse(class >= 0.5, 1, 0))})
+}
+```
+
+We have already noted some issue with the \func{knnPredV()} function: 1) We have to name our training dataset \var{knnMat}. 2) The input ($x$) values in the training data have to be the second column of \var{knnMat}. 3) The function \func{knnPredV()} only allows using one input variable for training the model, and thus can only predict for one input variable. 4) This function is only usable for classifying into 1 of two classes, 1 or 0 (yes or no, diseased or non-diseased, etc.) 5) This function does't handle tie breaks, and there are definitely other issues we could note if we continued.
+
+I'd like you to address problem 1) and 2) - this can be done by having a user specify a training data matrix with column names denoting the clustering variable and outcomes. Please modify \func{knnPredV()} and to accomplish this, and name the resulting function \func{knnPredV2()}. It might be most helpful to you if you define two new variables for \func{knnPredV2()} - \var{trainData} (the training data) and \var{clVar} (the variable used for the clustering and prediction)
+
+When finished, use your function to predict the outcomes for new data, based on training the KNN algorithm with the training data \var{knnMat}. The test data to use is in \var{testInput} below:
+
+```{r}
+## This would be the x argument to your function
+testInput <- rnorm(10, 1.5 * trainOutcome, 1)
+```
+
+\vspace{50pt}
+
+5) Create a simple factor variable in R and name it \var{factor1}. Give it three levels of your choice. Then, run \func{typeof()} on this factor. What happened? You can read about factors in R by typing \code{?factor} in the console and hitting enter. The R package \var{forcats} is also very helpful for working with factors. You can read about it [here](http://r4ds.had.co.nz/factors.html)
+
